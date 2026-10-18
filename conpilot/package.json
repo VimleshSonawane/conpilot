@@ -1,0 +1,8 @@
+{
+  "name": "conpilot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ConPilot, the AI co-pilot for construction projects: upload a construction schedule, get error checks, earned value, charts, forecasts and an AI assistant.",
+  "engines": { "node": ">=18" }
+}

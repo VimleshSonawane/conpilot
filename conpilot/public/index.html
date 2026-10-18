@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ConPilot — AI co-pilot for construction projects</title>
+<meta name="description" content="Upload a construction schedule and get error checks, earned value, forecasts, charts and an AI assistant.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2317222D'/%3E%3Cpath d='M16 5l9 21-9-5-9 5z' fill='%23E3A000'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="band" aria-hidden="true"></div>
+<header class="top">
+  <div class="wrap topin">
+    <div class="mark">
+      <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="var(--ink)"/><path d="M16 5l9 21-9-5-9 5z" fill="var(--hivis)"/></svg>
+      <div><b>ConPilot</b><span>AI co-pilot for construction projects</span></div>
+    </div>
+    <div class="controls">
+      <label class="sd">Status date <input type="date" id="statusDate"></label>
+      <button id="newFile" class="hidden" type="button">Load another file</button>
+    </div>
+  </div>
+</header>
+
+<main id="empty" class="wrap">
+  <div class="intro">
+    <div>
+      <h1>Drop in your schedule. Catch the problems before your client does.</h1>
+      <p class="lede">Upload an Excel or CSV export from Smartsheet, MS Project, Primavera or an AutoCAD data-extraction table. ConPilot checks every row, measures cost and schedule performance, draws the charts, forecasts where the job will land, and answers your questions with AI.</p>
+      <div class="does">
+        <div><h3>Fewer errors</h3><p>Duplicate WBS codes, impossible dates, broken links, missing costs and roll-ups that don’t add up.</p></div>
+        <div><h3>Budget control</h3><p>Earned value by package and by trade, cash-flow by month, and a cost forecast you can stress-test.</p></div>
+        <div><h3>Schedule control</h3><p>An interactive timeline, overdue and late work, and a forecast finish based on real progress.</p></div>
+        <div><h3>An AI that knows your job</h3><p>A weekly briefing in one click. Ask what’s driving the overrun, or have it draft the email to the sub.</p></div>
+      </div>
+    </div>
+    <div>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload a schedule file">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><rect x="10" y="6" width="36" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M18 18h20M18 26h20M18 34h12" stroke="currentColor" stroke-width="2.5"/><circle cx="42" cy="42" r="10" fill="var(--hivis)"/><path d="M42 37v10M37 42h10" stroke="var(--hivis-ink)" stroke-width="2.5"/></svg>
+        <strong>Drop an .xlsx, .xls or .csv here</strong>
+        <small>or click to choose a file. It’s read in your browser and never uploaded to a server.</small>
+        <div class="drop-actions">
+          <button class="primary" id="sampleBtn" type="button">Try the sample project</button>
+          <button id="templateBtn" type="button" class="hidden">Download template</button>
+        </div>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv" hidden>
+      <div class="err" id="err" role="alert"></div>
+      <p class="note">Columns it looks for (names can vary): WBS, Task, Start, Finish, % Complete, Budget, Actual Cost, Predecessors, Owner. Files up to 15 MB.</p>
+    </div>
+  </div>
+</main>
+
+<main id="loaded" class="wrap hidden">
+  <div class="verdict">
+    <div class="file" id="fileLine"></div>
+    <h1 id="verdict"></h1>
+    <details class="mapline" id="mapline"></details>
+  </div>
+  <div class="readings" id="readings"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button role="tab" data-tab="schedule" aria-selected="false">Schedule</button>
+    <button role="tab" data-tab="cost" aria-selected="false">Cost</button>
+    <button role="tab" data-tab="problems" aria-selected="false">Problems <span class="count" id="probCount"></span></button>
+    <button role="tab" data-tab="ai" aria-selected="false">Ask AI</button>
+  </nav>
+  <div class="filterbar" id="filterbar">
+    <input type="search" id="search" placeholder="Search tasks, WBS or owner" aria-label="Search tasks">
+    <div class="chips-active" id="activeFilters"></div>
+  </div>
+
+  <section class="tab" id="tab-overview" role="tabpanel">
+    <div class="grid">
+      <div class="card span2"><div class="ch"><h2>Progress and cost curve</h2><span class="meta">Planned value against what’s been earned and spent, with the forecast to completion</span></div><div class="chartbox tall"><canvas id="cSCurve"></canvas></div></div>
+      <div class="card"><div class="ch"><h2>Task status</h2><span class="meta">Click a slice to see those tasks</span></div><div class="chartbox"><canvas id="cStatus"></canvas></div></div>
+      <div class="card"><div class="ch"><h2>Watch list</h2><span class="meta">Tasks with the biggest cost or schedule risk</span></div><ol class="watch" id="watch"></ol></div>
+      <div class="card span2"><div class="ch"><h2>Budget, earned and spent by package</h2><span class="meta">Click a package to filter every view</span></div><div class="chartbox"><canvas id="cPackages"></canvas></div></div>
+      <div class="card"><div class="ch"><h2>Cost performance by trade</h2><span class="meta">CPI per owner. Below 1.00 is losing money</span></div><div class="chartbox"><canvas id="cOwners"></canvas></div></div>
+      <div class="card"><div class="ch"><h2>Data problems by type</h2><span class="meta">Click to open the list</span></div><div class="chartbox"><canvas id="cProblems"></canvas></div></div>
+      <div class="card span2"><div class="ch"><h2>Planned spend by month</h2><span class="meta">Cash-flow from the baseline. Months after the status date are what you still need to fund</span></div><div class="chartbox"><canvas id="cCash"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="tab hidden" id="tab-schedule" role="tabpanel">
+    <div class="card">
+      <div class="ch"><h2>Timeline</h2>
+        <div class="legend">
+          <span><i style="background:var(--plan-fill);border:1px solid var(--plan)"></i>Planned</span>
+          <span><i style="background:var(--ok)"></i>On track</span>
+          <span><i style="background:var(--hivis)"></i>Behind</span>
+          <span><i style="background:var(--over)"></i>Overdue</span>
+          <span><i style="background:var(--done)"></i>Done</span>
+        </div>
+      </div>
+      <p class="meta">Click any task for details.</p>
+      <div class="scroll" id="gantt"></div>
+    </div>
+  </section>
+
+  <section class="tab hidden" id="tab-cost" role="tabpanel">
+    <div class="card whatif">
+      <div class="ch"><h2>What if?</h2><span class="meta">Drag to test how the rest of the job could perform</span></div>
+      <div class="wi">
+        <div>
+          <label for="wiCpi">Remaining work cost performance: <b id="wiCpiV"></b></label>
+          <input type="range" id="wiCpi" min="0.6" max="1.3" step="0.01">
+          <div class="wiout" id="wiCost"></div>
+        </div>
+        <div>
+          <label for="wiSpi">Remaining work schedule performance: <b id="wiSpiV"></b></label>
+          <input type="range" id="wiSpi" min="0.5" max="1.4" step="0.01">
+          <div class="wiout" id="wiTime"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><h2>All tasks</h2><button type="button" id="exportTasks" class="small hidden">Export analysis (CSV)</button></div>
+      <div class="scroll" id="taskTable"></div>
+    </div>
+  </section>
+
+  <section class="tab hidden" id="tab-problems" role="tabpanel">
+    <div class="card">
+      <div class="ch"><h2>Data problems</h2><button type="button" id="exportIssues" class="small hidden">Export issue log (CSV)</button></div>
+      <div class="filters" id="sevFilters"></div>
+      <ul class="issues" id="issues"></ul>
+    </div>
+  </section>
+
+  <section class="tab hidden" id="tab-ai" role="tabpanel">
+    <div class="ai-grid">
+      <div class="card">
+        <div class="ch"><h2>Status briefing</h2><button class="primary" id="briefBtn" type="button" disabled>Write briefing</button></div>
+        <div class="ai-off" id="aiOff">Checking for the AI connection…</div>
+        <div class="codeRow hidden" id="codeRow">
+          <label for="accessCode">Access code</label>
+          <input type="password" id="accessCode" autocomplete="off" placeholder="Ask the site owner">
+        </div>
+        <div class="brief md" id="brief" aria-live="polite"></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h2>Ask about this project</h2></div>
+        <div class="log" id="log" aria-live="polite"></div>
+        <div class="chips" id="chips"></div>
+        <div class="ask">
+          <textarea id="q" rows="1" placeholder="Ask about cost, schedule or risks, or have it draft a message…" aria-label="Ask a question"></textarea>
+          <button class="primary" id="send" type="button" disabled>Ask</button>
+          <button id="stop" type="button" class="hidden">Stop</button>
+        </div>
+        <div class="note">Answers use only the data in your file. AI can make mistakes, so check numbers before you send anything.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="backdrop hidden" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="dTitle" role="dialog">
+  <div class="dhead"><h2 id="dTitle"></h2><button type="button" id="dClose" aria-label="Close details">Close</button></div>
+  <div id="dBody"></div>
+</aside>
+
+<footer class="wrap foot" id="foot"></footer>
+<script src="app.js"></script>
+</body>
+</html>
