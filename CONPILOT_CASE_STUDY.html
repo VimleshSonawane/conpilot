@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ConPilot Case Study</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: a drawing sheet. Title block on top, then a single reading column with full-width data bands. */
+:root{
+  --paper:#F6F7F8; --sheet:#FFFFFF; --ink:#17222D; --ink-2:#4A5866; --rule:#D5DBE1;
+  --hivis:#E3A000; --hivis-ink:#17222D; --hivis-soft:#FCEFC8; --plan:#9FB1C2; --grid:rgba(23,34,45,.045);
+  --ok:#2E7D4F; --warn:#B4541A;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0F161D; --sheet:#151F29; --ink:#E7ECF0; --ink-2:#9DAAB6; --rule:#2A3946;
+  --hivis:#F2B21C; --hivis-ink:#17222D; --hivis-soft:#3A2F12; --plan:#4F6577; --grid:rgba(231,236,240,.04);
+  --ok:#5DBB86; --warn:#E58A52; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0F161D; --sheet:#151F29; --ink:#E7ECF0; --ink-2:#9DAAB6; --rule:#2A3946;
+  --hivis:#F2B21C; --hivis-ink:#17222D; --hivis-soft:#3A2F12; --plan:#4F6577; --grid:rgba(231,236,240,.04);
+  --ok:#5DBB86; --warn:#E58A52; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--f-body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 48px}
+.sheet{max-width:980px;margin:0 auto;background:var(--sheet);border:1.5px solid var(--ink);position:relative}
+.hazard{height:10px;background:repeating-linear-gradient(-45deg,var(--hivis) 0 14px,var(--ink) 14px 28px)}
+.inner{padding:clamp(20px,4vw,48px)}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.05}
+h1{font-size:clamp(44px,7vw,76px);font-weight:700;letter-spacing:-.01em}
+h1 .mark{background:linear-gradient(transparent 62%,var(--hivis) 62% 92%,transparent 92%)}
+h2{font-size:30px;font-weight:600;margin-bottom:14px}
+h3{font-size:21px;font-weight:600}
+p{margin:0}
+.lede{font-size:20px;line-height:1.5;color:var(--ink-2);max-width:62ch;margin-top:16px}
+.label{font:500 11.5px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.mono{font-family:var(--f-mono);font-size:.88em}
+section{padding-block:36px;border-top:1px solid var(--rule);display:grid;gap:18px}
+section > p, .prose{max-width:68ch}
+
+/* Title block */
+.tb{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1.5px solid var(--ink);margin-top:32px}
+.tb > div{padding:12px 14px;border-right:1px solid var(--ink);display:grid;gap:4px;min-width:0}
+.tb > div:last-child{border-right:0}
+.tb b{font:600 22px/1.1 var(--f-display)}
+.tb small{color:var(--ink-2);font-size:13.5px;line-height:1.35}
+@media (max-width:720px){.tb{grid-template-columns:repeat(2,minmax(0,1fr))}.tb > div:nth-child(2){border-right:0}.tb > div:nth-child(-n+2){border-bottom:1px solid var(--ink)}}
+
+/* Problem grid */
+.pairs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--rule)}
+.pairs > div{padding:18px;border-right:1px solid var(--rule);display:grid;gap:8px;align-content:start}
+.pairs > div:last-child{border-right:0}
+.pairs .was{color:var(--warn);font:500 12px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+.pairs p{font-size:15.5px;color:var(--ink-2)}
+.pairs .now{color:var(--ink);font-weight:500}
+@media (max-width:720px){.pairs{grid-template-columns:1fr}.pairs > div{border-right:0;border-bottom:1px solid var(--rule)}.pairs > div:last-child{border-bottom:0}}
+
+/* Personas */
+.personas{display:flex;flex-wrap:wrap;gap:10px}
+.persona{border:1px solid var(--ink);padding:8px 12px;font-size:15px;display:flex;gap:10px;align-items:baseline}
+.persona .mono{color:var(--ink-2)}
+
+/* Epic chart */
+.chart{display:grid;gap:10px;font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) 44px;gap:14px;align-items:center}
+.row .name{font-size:15px;line-height:1.25}
+.row .name .mono{color:var(--ink-2);margin-right:6px}
+.track{position:relative;height:22px;background-image:linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:calc(100%/3) 100%;border-left:1px solid var(--ink)}
+.bar{position:absolute;top:3px;bottom:3px;left:0;display:flex}
+.bar i{display:block;height:100%}
+.s1{background:var(--ink)} .s2{background:var(--hivis)}
+.row .pts{font:500 14px var(--f-mono);text-align:right}
+.axis{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) 44px;gap:14px}
+.axis .ticks{display:flex;justify-content:space-between;font:400 11.5px var(--f-mono);color:var(--ink-2);margin-left:-3px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:14px;height:10px;display:inline-block}
+@media (max-width:620px){.row,.axis{grid-template-columns:minmax(0,1fr) 40px}.row .name{grid-column:1/-1}.row .track{grid-column:1}.axis .sp{display:none}}
+
+/* Sprints */
+.sprints{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.sprint{border:1.5px solid var(--ink);display:grid;grid-template-rows:auto 1fr;min-width:0}
+.sprint header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 16px;border-bottom:1.5px solid var(--ink)}
+.sprint.one header{background:var(--ink);color:var(--sheet)}
+.sprint.two header{background:var(--hivis);color:var(--hivis-ink)}
+.sprint header .pts{font:600 26px/1 var(--f-display)}
+.sprint .body{padding:16px;display:grid;gap:14px;align-content:start}
+.sprint .goal{font-size:16px}
+.sprint ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:15px;color:var(--ink-2)}
+.log{font:400 12.5px/1.6 var(--f-mono);color:var(--ink-2);border-top:1px dashed var(--rule);padding-top:10px;overflow-x:auto;white-space:nowrap}
+.log b{color:var(--ink);font-weight:500}
+.retro{display:grid;gap:8px;font-size:14.5px}
+.retro div{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px}
+.retro .k{font:500 11px/1.6 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+.retro .good{color:var(--ok)} .retro .fix{color:var(--warn)}
+@media (max-width:720px){.sprints{grid-template-columns:1fr}}
+
+/* Decisions */
+.decisions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 32px}
+.decisions > div{display:grid;gap:6px;align-content:start;padding-left:14px;border-left:3px solid var(--hivis)}
+.decisions p{font-size:15.5px;color:var(--ink-2)}
+@media (max-width:720px){.decisions{grid-template-columns:1fr}}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--rule)}
+.stats > div{padding:14px;border-right:1px solid var(--rule);display:grid;gap:2px}
+.stats > div:last-child{border-right:0}
+.stats b{font:700 36px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.stats span{font-size:13.5px;color:var(--ink-2)}
+@media (max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats > div{border-bottom:1px solid var(--rule)}.stats > div:nth-child(2n){border-right:0}.stats > div:last-child{grid-column:1/-1;border-bottom:0}}
+
+/* Lessons */
+.lessons{margin:0;padding:0;list-style:none;display:grid;gap:12px;max-width:72ch}
+.lessons li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:baseline}
+.lessons .tag{font:500 11.5px var(--f-mono);background:var(--hivis-soft);padding:2px 7px;letter-spacing:.04em;white-space:nowrap}
+.note{font-size:13.5px;color:var(--ink-2);border:1px dashed var(--rule);padding:12px 14px;max-width:none}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font:400 12px var(--f-mono);color:var(--ink-2);padding:14px clamp(20px,4vw,48px);border-top:1.5px solid var(--ink)}
+a{color:inherit;text-decoration-color:var(--hivis);text-decoration-thickness:2px;text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--hivis);outline-offset:2px}
+</style>
+
+<article class="sheet">
+  <div class="hazard" aria-hidden="true"></div>
+  <div class="inner">
+    <div class="label">Portfolio case study · Product &amp; delivery</div>
+    <h1 style="margin-top:10px">ConPilot: an <span class="mark">AI co-pilot</span> for construction project controls</h1>
+    <p class="lede">A browser tool that takes the schedule a project manager already has, finds the data errors, measures cost and schedule performance, and answers questions with AI. I ran it as a two-sprint Scrum project, from MVP to a full project-controls product.</p>
+
+    <div class="tb" role="list" aria-label="Project details">
+      <div role="listitem"><span class="label">Role</span><b>Product owner &amp; builder</b><small>Backlog, priorities, delivery</small></div>
+      <div role="listitem"><span class="label">Timeline</span><b>Oct 17–19, 2026</b><small>2 sprints, 4 commits</small></div>
+      <div role="listitem"><span class="label">Stack</span><b>Vercel · Claude API</b><small>SheetJS, Chart.js, pdf.js, jsPDF</small></div>
+      <div role="listitem"><span class="label">Scope</span><b>133 points</b><small>8 epics, 34 stories, 3 rework items</small></div>
+    </div>
+
+    <section style="margin-top:36px">
+      <div class="label">The problem</div>
+      <h2>Overruns are visible in the data long before anyone acts on them</h2>
+      <div class="pairs">
+        <div><span class="was">Errors are found late</span><p>Duplicate WBS codes, impossible dates and broken links are caught by hand, often after the report has gone out.</p><p class="now">ConPilot checks every row on upload and suggests a fix for each problem.</p></div>
+        <div><span class="was">Reports look backward</span><p>Status reports describe last month. They don't say where cost and finish date will land.</p><p class="now">Earned value, an earned-schedule finish forecast and what-if sliders.</p></div>
+        <div><span class="was">Generic AI doesn't know the job</span><p>Pasting a schedule into a chatbot gives answers that ignore the project's numbers.</p><p class="now">An assistant that uses only the project's data and cites WBS codes.</p></div>
+      </div>
+      <div class="personas" aria-label="Personas">
+        <div class="persona"><span class="mono">01</span>Construction project manager</div>
+        <div class="persona"><span class="mono">02</span>Site engineer</div>
+        <div class="persona"><span class="mono">03</span>Site owner running the deployment</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="label">The backlog</div>
+      <h2>Eight epics, sized and split across two sprints</h2>
+      <p>I rebuilt the backlog from the git history and the code: every story has acceptance criteria tied to real functions and the commits that delivered them. The chart shows story points per epic.</p>
+      <div class="legend"><span><i class="s1"></i>Sprint 1</span><span><i class="s2"></i>Sprint 2</span></div>
+      <div class="chart" role="img" aria-label="Story points per epic. Advanced controls 26, Schedule control 21, Dashboard and UI 21, AI assistant 20, Cost control 17, Schedule upload 14, Data quality checks 8.">
+        <div class="row"><div class="name"><span class="mono">E7</span>Advanced project controls</div><div class="track"><div class="bar" style="width:86.67%"><i class="s2" style="width:100%"></i></div></div><div class="pts">26</div></div>
+        <div class="row"><div class="name"><span class="mono">E4</span>Schedule control</div><div class="track"><div class="bar" style="width:70%"><i class="s1" style="width:47.62%"></i><i class="s2" style="width:52.38%"></i></div></div><div class="pts">21</div></div>
+        <div class="row"><div class="name"><span class="mono">E6</span>Dashboard &amp; UI</div><div class="track"><div class="bar" style="width:70%"><i class="s1" style="width:42.86%"></i><i class="s2" style="width:57.14%"></i></div></div><div class="pts">21</div></div>
+        <div class="row"><div class="name"><span class="mono">E5</span>AI assistant</div><div class="track"><div class="bar" style="width:66.67%"><i class="s1" style="width:100%"></i></div></div><div class="pts">20</div></div>
+        <div class="row"><div class="name"><span class="mono">E3</span>Cost control (earned value)</div><div class="track"><div class="bar" style="width:56.67%"><i class="s1" style="width:88.24%"></i><i class="s2" style="width:11.76%"></i></div></div><div class="pts">17</div></div>
+        <div class="row"><div class="name"><span class="mono">E1</span>Schedule upload &amp; parsing</div><div class="track"><div class="bar" style="width:46.67%"><i class="s1" style="width:57.14%"></i><i class="s2" style="width:42.86%"></i></div></div><div class="pts">14</div></div>
+        <div class="row"><div class="name"><span class="mono">E2</span>Data quality checks</div><div class="track"><div class="bar" style="width:26.67%"><i class="s1" style="width:100%"></i></div></div><div class="pts">8</div></div>
+        <div class="axis" aria-hidden="true"><div class="sp"></div><div class="ticks"><span>0</span><span>10</span><span>20</span><span>30 pts</span></div><div class="sp"></div></div>
+      </div>
+      <p class="label" style="text-transform:none;letter-spacing:0;font-size:12.5px">E8, Security &amp; deployment, was tracked as technical tasks (headers, secrets, hosting, domain), so it has no story points.</p>
+    </section>
+
+    <section>
+      <div class="label">Delivery</div>
+      <h2>MVP first, then the controls that set it apart</h2>
+      <div class="sprints">
+        <div class="sprint one">
+          <header><h3>Sprint 1 · Foundation &amp; MVP</h3><span class="pts">73 pts</span></header>
+          <div class="body">
+            <p class="goal">Ship a working, securely deployable MVP: upload a schedule, check it for errors, show earned value and the timeline, and answer questions with AI.</p>
+            <ul>
+              <li>Excel/CSV upload with flexible column mapping</li>
+              <li>16 automatic data, cost and schedule checks with suggested fixes</li>
+              <li>CPI, SPI, EAC, S-curve, what-if sliders, Gantt timeline</li>
+              <li>Secure Claude endpoint, weekly briefing, project chat</li>
+            </ul>
+            <div class="retro">
+              <div><span class="k good">Went well</span><span>Security was built in from the first commit and never needed rework.</span></div>
+              <div><span class="k fix">To improve</span><span>A second copy of the front end appeared within 18 minutes and needed a same-day rename fix.</span></div>
+            </div>
+            <div class="log"><b>8b8dbb1</b> 10-17 22:42 modular app + AI endpoint<br><b>b7e0166</b> 10-17 22:59 single-file build<br><b>e43e5fa</b> 10-17 23:00 rename fix</div>
+          </div>
+        </div>
+        <div class="sprint two">
+          <header><h3>Sprint 2 · Advanced controls &amp; polish</h3><span class="pts">60 pts</span></header>
+          <div class="body">
+            <p class="goal">Turn the MVP into a full project-controls product, wrapped in a landing site that explains it.</p>
+            <ul>
+              <li>Critical path with FS, SS, FF, SF links, lag and float</li>
+              <li>3-week look-ahead, risk register, trade performance</li>
+              <li>Quantity takeoff check and week-over-week comparison</li>
+              <li>PDF import, PDF status report, in-app navigation assistant</li>
+            </ul>
+            <div class="retro">
+              <div><span class="k good">Went well</span><span>14 stories built on the Sprint 1 engine with no change to the AI endpoint.</span></div>
+              <div><span class="k fix">To improve</span><span>One 2,131-line commit mixed 14 stories with a UI overhaul, which makes review and rollback hard.</span></div>
+            </div>
+            <div class="log"><b>eae5e20</b> 10-19 01:24 +2,131 / −530 lines</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="label">Product decisions</div>
+      <h2>Choices that shaped the product</h2>
+      <div class="decisions">
+        <div><h3>The file never leaves the browser</h3><p>Schedules carry commercial data. Parsing happens on the user's device, and only a compact summary goes to the AI when someone asks a question.</p></div>
+        <div><h3>Security in the MVP, not later</h3><p>The API key stays on the server. Requests are checked for origin, size and shape, rate-limited per IP, and can be gated by an access code compared in constant time.</p></div>
+        <div><h3>AI grounded in the project's numbers</h3><p>The system prompt is fixed on the server: answer only from the project data, cite WBS codes, treat spreadsheet text as untrusted, and decline off-topic requests.</p></div>
+        <div><h3>Work with files people already have</h3><p>Column mapping accepts exports from Smartsheet, MS Project, Primavera and AutoCAD tables, so there's no new tool to adopt before seeing value.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="label">Outcome</div>
+      <h2>What shipped in two sprints</h2>
+      <div class="stats">
+        <div><b>34</b><span>user stories delivered</span></div>
+        <div><b>133</b><span>story points, incl. rework</span></div>
+        <div><b>13</b><span>dashboard views</span></div>
+        <div><b>5</b><span>file types read: xlsx, xls, xlsm, csv, pdf</span></div>
+        <div><b>0</b><span>rework needed on the security work</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="label">Lessons &amp; next sprint</div>
+      <h2>What I'd do differently</h2>
+      <ul class="lessons">
+        <li><span class="tag">One source of truth</span><span>Sprint 2 went only into the single-file build, so the deployable folder fell behind. Next sprint: merge the two front ends.</span></li>
+        <li><span class="tag">Small commits</span><span>Use one commit or pull request per story with a descriptive message, so every change traces back to the backlog.</span></li>
+        <li><span class="tag">Definition of done</span><span>Add automated tests for the earned-value and critical-path maths, and confirm the deployment, environment variables and domain are live.</span></li>
+        <li><span class="tag">Scale</span><span>Move the per-instance rate limit to shared storage and self-host the libraries so the security policy can drop its CDN hosts.</span></li>
+      </ul>
+      <p class="note">Method: this case study is reconstructed from the repository's git history and code. Commits were uploaded through GitHub's web interface, so dates show when work was uploaded rather than how long it took to build. Story points are estimated from the size of each change.</p>
+    </section>
+  </div>
+  <div class="foot"><span>ConPilot · Vimlesh Sonawane, Project Manager</span><span>Source: <a href="https://github.com/VimleshSonawane/conpilot" target="_blank" rel="noopener noreferrer">github.com/VimleshSonawane/conpilot</a></span></div>
+</article>
+
+</html>
